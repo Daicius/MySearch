@@ -5,7 +5,10 @@ import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.app.Activity;
+import android.app.ListActivity;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -17,6 +20,7 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
@@ -31,50 +35,44 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.net.URI;
+import java.net.URL;
 import java.nio.channels.ServerSocketChannel;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements Runnable {
+public class MainActivity extends AppCompatActivity implements Runnable, OnItemClickListener {
     private String TAG = "MySearch";
     Handler handler;
-    private ArrayAdapter<String> arr_aAdapter;
+    private List<String> list;
     private SimpleAdapter ListItemAdapter;
     EditText MySearch;
+    List<String> list2 = new ArrayList<String>();
     ListView listView;
-    ArrayList<String> str1;
-    ArrayList<String> ans1;
-    String str[] = new String[20];
-    String ans[] = new String[20];
-    String updateDate;
     TextView tv;
+    ArrayAdapter arrayAdapter;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         MySearch = findViewById(R.id.Search_Text);
-        SharedPreferences sharedPreferences = getSharedPreferences("MyFind", Activity.MODE_PRIVATE);
+        SharedPreferences sharedPreferences = getSharedPreferences("MyFind2", Activity.MODE_PRIVATE);
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-//        str = Double.parseDouble(sharedPreferences.getStringArry("MyFind", "0"));
-
-//        获取当前时间
-//        判断日期是否相同
             Log.i(TAG, "onCreate: need updates");
-//            开启子线程
             Thread t = new Thread(this);
             t.start();
         handler = new Handler() {
             @Override
             public void handleMessage(@NonNull Message msg) {
                 if (msg.what == 5) {
-                    Bundle bd1 = (Bundle) msg.obj;
-//                    str = bd1.getStringArray("MyFind");
-                    str1 = bd1.getStringArrayList("MyFind2");
+                   list = (List<String>) msg.obj;
+                   Log.i(TAG,"get_find"+list);
                     Log.i("TAG","得到更新");
-                    Log.i(TAG,"get:"+str1);
 //                    updateDate = bd1.getString("update_date");
                     Toast.makeText(MainActivity.this, "信息更新", Toast.LENGTH_SHORT).show();
                 }
@@ -92,18 +90,27 @@ public class MainActivity extends AppCompatActivity implements Runnable {
         listView = findViewById(R.id.myfind);
         tv.setText("wait....");
         String key = String.valueOf(MySearch.getText());
-        for(int i = 0,j = 0;i<str1.size();i++){
-            if (str1.get(i).contains(key)){
-                ans[j] = str[i];
-                j++;
+        if (key.length()>0) {
+            for (int i = 0; i < list.size(); i++) {
+                String find = list.get(i);
+                if (find.contains(key)) {
+                    Log.i(TAG, find + "isContain" + key);
+                    list2.add(find);
+                } else {
+                    Log.i(TAG, find + "isNotContain" + key);
+                }
             }
-            if (ans.length == 0){
-                tv.setText("没有找到相应信息");
-            }else {
+            Log.i(TAG, "getAns" + list2);
+            if (list2.size() > 0) {
                 tv.setText("找到以下信息");
-                arr_aAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, ans);
-                listView.setAdapter(arr_aAdapter);
+                arrayAdapter = new ArrayAdapter<String>(MainActivity.this, android.R.layout.simple_list_item_1, list2);
+                listView.setAdapter(arrayAdapter);
+                listView.setOnItemClickListener(this);
+            } else {
+                tv.setText("没有关于" + key + "的信息");
             }
+        }else {
+            Toast.makeText(MainActivity.this, "请输入关键字", Toast.LENGTH_SHORT).show();
         }
 
     }
@@ -121,7 +128,6 @@ public class MainActivity extends AppCompatActivity implements Runnable {
                 e.printStackTrace();
             }
         }
-        Bundle bundle = new Bundle();
         Document doc = null;
         try {
             doc = Jsoup.connect("https://it.swufe.edu.cn/index/tzgg.htm").get();
@@ -132,18 +138,25 @@ public class MainActivity extends AppCompatActivity implements Runnable {
         Element ul18 = uls.get(17);
         Log.i(TAG, ul18.text());
         Elements lis = ul18.getElementsByTag("li");
-        ArrayList<String> str2 = new ArrayList<String>();
-        String str1[] = new String[lis.size()];
+        List<String> str2 = new ArrayList<>();
+        List<String> herf = new ArrayList<>();
         for (int i = 0; i < lis.size(); i++) {
             Element a = lis.get(i);
             str2.add(a.text());
-            str1[i] = a.text();
-            Log.i(TAG, "msgfind:" + str1[i]);
         }
-        bundle.putStringArray("MyFind",str1);
-        bundle.putStringArrayList("MyFind2",str2);
+        Log.i(TAG,"find"+str2);
         Message message = handler.obtainMessage(5);
-        message.obj = bundle;
+        message.obj = str2;
         handler.sendMessage(message);
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        Log.i(TAG,"position:"+position);
+        Uri uri = Uri.parse("https://it.swufe.edu.cn/index/tzgg.htm");
+        Intent it = new Intent();
+        it.setAction(Intent.ACTION_VIEW);
+        it.setData(uri);
+        startActivity(it);
     }
 }
