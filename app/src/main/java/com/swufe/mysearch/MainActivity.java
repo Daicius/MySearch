@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity implements Runnable, OnItemC
     ListView listView;
     TextView tv;
     ArrayAdapter arrayAdapter;
+    String updateDate = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,9 +64,18 @@ public class MainActivity extends AppCompatActivity implements Runnable, OnItemC
         MySearch = findViewById(R.id.Search_Text);
         SharedPreferences sharedPreferences = getSharedPreferences("MyFind2", Activity.MODE_PRIVATE);
         SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
+        updateDate = sharedPreferences.getString("update_date","");
+        Date today = Calendar.getInstance().getTime();
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMdd");
+        final String todayStr = simpleDateFormat.format(today);
+        Log.i(TAG,"当前时间"+todayStr);
+        if (!today.equals(updateDate)) {
             Log.i(TAG, "onCreate: need updates");
             Thread t = new Thread(this);
             t.start();
+        } else {
+            Log.i(TAG, "onCreate:don't need updates");
+        }
         handler = new Handler() {
             @Override
             public void handleMessage(@NonNull Message msg) {
@@ -82,8 +92,11 @@ public class MainActivity extends AppCompatActivity implements Runnable, OnItemC
         };
         //保存更新的日期
         SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("update_date", todayStr);
         editor.commit();
     }
+
+
     public void btnSearch(View btn){
         MySearch = findViewById(R.id.Search_Text);
         tv = findViewById(R.id.itemTitle1);
